@@ -19,6 +19,7 @@ const saveImages = async (req, res, next) => {
       ); // Save with the correct extension
 
       try {
+        console.log(`Attempting to save file to: ${filePath}`);
         // Write the file asynchronously
         await fs.promises.writeFile(filePath, file.data);
         messages.push(`${key} saved as an image file.`);

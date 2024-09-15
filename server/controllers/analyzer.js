@@ -1,9 +1,11 @@
 const OpenAIApi = require("openai"); // Import the OpenAI library
 const { processImages } = require("./utils/processImages.js");
-require("dotenv").config({ path: `${__dirname}/../.env` });
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 // Initialize the OpenAI API client
 const openai = new OpenAIApi({ apiKey: process.env.OPENAI_API_KEY });
+console.log(`OpenAI API Key: ${process.env.OPENAI_API_KEY}`)
 
 const analyzer = async (req, res) => {
   const selectedstyle = req.body.style;
@@ -33,36 +35,26 @@ const analyzer = async (req, res) => {
 
     const textContent = `I have a collection of images encoded in base64, they are ${imageUrls}, each showing a different piece of clothing. I need to create multiple outfits for a 25 to 30-year-old female in a ${selectedstyle} style. Based on these images, first analyze the images based on color, style, texture, then mix and match these clothes to form 1-5 outfits. Each outfit should be a combination of 2 to 4 pieces.\nFor each outfit, provide a list that includes:\n- An outfit identifier (outfit_id) (auto-generated)\n- A list of clothes_id you selected for this outfit, the clothes_id is the 0-based index of the image provided in the collection, in format of image+index\n - A score from 0 to 10, reflecting how well the outfit matches the ${selectedstyle} style.\n - A short description about your rationales for this outfit. Your output should be JSON , in following format\n ${formatExample}.`;
 
-    const imagesContent = imageUrls.map((url) => ({
-      type: "image_url",
-      image_url: {
-        url: url,
-        detail: "low",
-      },
-    }));
-
     const message = [
       {
         role: "user",
         content: textContent,
       },
-      ...imagesContent,
     ];
-
-    console.log(JSON.stringify(message));
 
     // Call the OpenAI API with the structured request
     const response = await openai.chat.completions.create({
       model: "gpt-3.5-turbo",
-      messages: [{ role: "user", content: textContent }],
+      messages: message,
     });
 
     if (response && response.choices && response.choices.length > 0) {
       console.log(response.choices[0]);
       res.status(200).json(response.choices[0].message.content);
     } else {
-      throw new Error("No valid response from GPT-4 API");
+      throw new Error("No valid response from OpenAI API");
     }
+    
   } catch (error) {
     console.error("Error processing request:", error);
     res.status(500).json({ message: `Error processing request: ${error.message}` });
