@@ -10,7 +10,8 @@ const Home = ({ response, setResponse, style, setStyle }) => {
   return (
     <div className="home">
       <h1 className="home__heading">Ask the AI stylist</h1>
-      
+
+
       {/* Section for image uploading */}
       <section className="home__image-uploader">
         <ImageUploader images={images} setImages={setImages} />
@@ -24,6 +25,7 @@ const Home = ({ response, setResponse, style, setStyle }) => {
           images={images}
           response={response}
           setResponse={setResponse}
+  
         />
       </section>
     </div>

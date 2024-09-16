@@ -1,42 +1,53 @@
-const fs = require("fs");
-const path = require("path");
+const path = require('path');
+const fs = require('fs');
 
-const saveImages = async (req, res, next) => {
-  const messages = [];
-  const uploadsDir = path.join(__dirname, "../uploads");
+// Middleware to save uploaded images
+function saveImages(req, res, next) {
+    if (!req.files) {
+        return res.status(400).json({ message: "No files uploaded" });
+    }
 
-  // Check if the uploads directory exists, if not create it
-  if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir, { recursive: true });
-  }
+    // Define upload directory
+    const uploadDir = path.join(__dirname, '..', 'uploads');
 
-  const errorOccurred = await Promise.all(
-    Object.keys(req.files).map(async (key) => {
-      const file = req.files[key];
-      const filePath = path.join(
-        uploadsDir,
-        `${key}.${file.mimetype.split("/")[1]}`
-      ); // Save with the correct extension
+    // Check if the upload directory exists and create it asynchronously if not
+    fs.promises.mkdir(uploadDir, { recursive: true })
+        .then(() => {
+            // Save each file with a unique name
+            const fileKeys = Object.keys(req.files);
+            const savePromises = fileKeys.map((key) => {
+                const file = req.files[key];  // Access each file by its key
 
-      try {
-        console.log(`Attempting to save file to: ${filePath}`);
-        // Write the file asynchronously
-        await fs.promises.writeFile(filePath, file.data);
-        messages.push(`${key} saved as an image file.`);
-        return false; // No error, continue processing
-      } catch (err) {
-        messages.push(`Error saving ${key}: ${err.message}`);
-        return true; // Error occurred, stop processing
-      }
-    })
-  );
+                // Generate unique file name using current time and random number
+                const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+                const fileExtension = path.extname(file.name);  // Get the file extension
+                const newFileName = `${key}${fileExtension}`;
+                const savePath = path.join(uploadDir, newFileName);
 
-  // Check if any error occurred during the file saving process
-  if (errorOccurred.some((error) => error)) {
-    return res.status(500).json({ message: messages.join("\n") });
-  }
+                // Use mv() to move the file to the upload directory
+                return new Promise((resolve, reject) => {
+                    file.mv(savePath, (err) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        console.log(`File saved to: ${savePath}`);
+                        // Set the file path so it can be accessed later
+                        req.files[key].path = savePath;  // Save the path back to the correct file key
+                        resolve();
+                    });
+                });
+            });
 
-  next(); // If no errors, proceed to the next middleware
-};
+            // Wait for all files to be saved
+            return Promise.all(savePromises);
+        })
+        .then(() => {
+            next();  // Proceed to the next middleware after all files are saved
+        })
+        .catch((error) => {
+            console.error("Error saving files:", error);
+            res.status(500).json({ message: "Failed to save files", error });
+        });
+}
 
 module.exports = { saveImages };

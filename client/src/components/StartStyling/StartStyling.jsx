@@ -6,7 +6,7 @@ import { hasImages, clearImages, storeImages } from "../../utils/indexDB";
 import CircularProgress from "@mui/material/CircularProgress";
 import Box from "@mui/material/Box";
 
-const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
+const StartStyling = ({ style, setStyle, response, setResponse, images, gender }) => {
   const [errors, setErrors] = useState({});
   const [request, setRequest] = useState(false); // the loading state
   const [apiCallFinished, setApiCallFinished] = useState(false);
@@ -27,7 +27,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
     "Athleisure",
     "Girly girl",
     "NYC Style",
-    "Preepy Fashion",
+    "Preppy Fashion",
     "Punk Fashion",
     "Gothic Fashion",
   ];
@@ -51,7 +51,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
 
   // Navigate when API call is finished
   useEffect(() => {
-    if (apiCallFinished && response.length > 0) {
+    if (apiCallFinished && Array.isArray(response) && response.length > 0) {
       navigate("/recommendations");
       setApiCallFinished(false); // Reset the flag after navigating
     }
@@ -73,7 +73,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
     }
 
     // ตรวจสอบว่ามีการอัปโหลดรูปภาพอย่างน้อย 1 รูป
-    if (!images || images.length === 0) {
+    if (!Array.isArray(images) || images.length === 0) {
       setError("Please upload at least 1 image.");
       return;
     }
@@ -84,14 +84,14 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
       formData.append(`image${index}`, image.file);
     });
 
-
     // เพิ่มรูปภาพลงใน FormData
     images.forEach((image, index) => {
       formData.append(`image${index}`, image.file);  // ใช้ image.file เพื่อเข้าถึงไฟล์
     });
 
-    // เพิ่มสไตล์ลงใน FormData
+    // เพิ่มสไตล์และเพศลงใน FormData
     formData.append("style", style);
+    formData.append("gender", gender);  // เพิ่มค่าเพศลงใน formData
 
     try {
       const apiResponse = await axios.post(`${base_url}/api/clothes`, formData, {
@@ -114,7 +114,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
     if (!style) {
       errors.style = "Please select a style for your outfit";
     }
-    if (!images || images.length < 3) {
+    if (!Array.isArray(images) || images.length < 3) {
       errors.images = "Please upload at least 3 images";
     }
     if (errors.images || errors.style) {
@@ -132,6 +132,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images }) => {
       formDataKeys.push(`image${index}`);
     });
     formData.append("style", style);
+    formData.append("gender", gender);  // เพิ่มเพศลงใน formData
 
     try {
       await storeImages(images, formDataKeys); // Store images in IndexedDB

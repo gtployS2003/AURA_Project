@@ -59,7 +59,7 @@ function MyOutfits() {
     return <p className="error-message">{error}</p>;
   }
 
-  if (outfits.length === 0) {
+  if (!Array.isArray(outfits) || outfits.length === 0) {
     return <p className="no-outfits-message">No outfits saved yet.</p>;
   }
 

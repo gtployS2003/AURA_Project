@@ -39,7 +39,7 @@ const Recommendations = ({ style, images, response, setResponse }) => {
 
   // ตรวจสอบจำนวนไฟล์และขนาดไฟล์รวมก่อนส่งคำขอไปยัง API
   const validateImages = () => {
-    if (images.length < 1 || images.length > 5) {
+    if (!Array.isArray(images) || images.length < 1 || images.length > 5) {
       setError("Please upload between 1 and 5 images.");
       return false;
     }
@@ -133,7 +133,7 @@ const Recommendations = ({ style, images, response, setResponse }) => {
       </button>
 
       <div className="outfit-gallery">
-        {outfits.map((outfit) => (
+        {Array.isArray(outfits) && outfits.map((outfit) => (
           <div key={outfit.outfit_id} className="outfit-card">
             <div className="outfit-card__header">
               <h2 className="outfit-card__text outfit-card__heading">Outfit {outfit.outfit_id}</h2>

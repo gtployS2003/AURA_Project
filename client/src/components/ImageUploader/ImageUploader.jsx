@@ -2,7 +2,6 @@ import { React, useState } from "react";
 import ImageUploading from "react-images-uploading";
 import "./ImageUploader.scss";
 import closeIcon from "../../asset/close.svg";
-import StartStyling from "../StartStyling/StartStyling";
 import uploadIcon from "../../asset/upload.png";
 const ImageUploader = ({ images, setImages }) => {
   const maxNumber = 5; // max # of images a user can upload per time
@@ -38,15 +37,11 @@ const ImageUploader = ({ images, setImages }) => {
             {...dragProps}
             onClick={onImageUpload}
           >
-            {imageList.length > 0 ? (
+            {imageList && imageList.length > 0 ? (
               <div className="image-uploader__preview">
                 {imageList.map((image, index) => (
                   <div key={index} className="image-uploader__image-item">
-                    <img
-                      src={image["data_url"]}
-                      alt=""
-                      className="image-uploader__image"
-                    />
+                    <img src={image["data_url"]} alt="" className="image-uploader__image"/>
 
                     <img
                       className="image-uploader__remove-btn"
