@@ -5,6 +5,7 @@ const cors = require("cors");
 const path = require("path");
 const clothesRoutes = require("./routes/clothes");
 const outfitsRoutes = require("./routes/outfits");
+const imageRoutes = require("./routes/images");
 const mongoose = require('mongoose');
 
 dotenv.config();
@@ -13,12 +14,12 @@ const app = express();
 const PORT = process.env.PORT || 3500;
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI,)
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("MongoDB connected");
 
     // Start server after successful connection
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server is running on port ${PORT}`);
     });
   })
@@ -35,12 +36,16 @@ app.use(fileUpload({
 }));
 app.use(express.json()); // Parse JSON bodies
 
+// เสิร์ฟไฟล์ภาพจากโฟลเดอร์ uploads
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // <--- เพิ่มบรรทัดนี้
+
 // Serve static files in the public folder
 app.use("/public", express.static(path.join(__dirname, "../client/public")));
 
 // Routes
 app.use("/api/clothes", clothesRoutes);
 app.use("/api/outfits", outfitsRoutes);
+app.use("/api/images", imageRoutes);
 
 // 404 Error handling for undefined routes
 app.use((req, res, next) => {
@@ -51,9 +56,4 @@ app.use((req, res, next) => {
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ message: "Something went wrong!", error: err.message });
-});
-
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
 });

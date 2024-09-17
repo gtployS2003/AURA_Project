@@ -2,7 +2,7 @@ const path = require("path");
 const fs = require("fs").promises; // ใช้ promises API ของ fs
 
 const publicDirectory = path.join(__dirname, "../../client/public/images");
-const baseUrl = "http://localhost:8080/public/images";
+const baseUrl = "http://localhost:3500/public/images";
 
 async function getImageUrls(directory, baseUrl) {
   try {

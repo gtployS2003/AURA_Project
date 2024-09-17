@@ -1,84 +1,64 @@
 import React, { useEffect, useState } from "react";
-import axios from 'axios';
 import {
-  getImages,
-  storeFavImages,
   saveFavoriteOutfit,
   removeFavoriteOutfit,
 } from "../../utils/indexDB";
+import axios from 'axios';
 import "./Recommendations.scss";
-import { getJson } from "../../utils/getJson";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faHeart as farHeart } from "@fortawesome/free-regular-svg-icons";
 import { faHeart as fasHeart } from "@fortawesome/free-solid-svg-icons";
 
-const Recommendations = ({ style, images, response, setResponse }) => {
-  const [favoriteStatus, setFavoriteStatus] = useState({}); // State to track favorites
+const Recommendations = ({ style }) => {
+  const [favoriteStatus, setFavoriteStatus] = useState({});
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [imageData, setImageData] = useState([]);
+  const [outfits, setOutfits] = useState([]);
+  const [imageUrls, setImageUrls] = useState([]); // เก็บ URL ของรูปภาพทั้งหมดจาก server
 
   const navigate = useNavigate();
-  const outfits = getJson(response); // Parse JSON string using getJson function
+  const location = useLocation();
+  const outfitsData = location.state?.outfits; // รับข้อมูล outfits ที่ถูกส่งมาจาก state
 
-  // Fetch images from IndexedDB
+  // ฟังก์ชันสำหรับจับคู่ชื่อไฟล์กับ URL ของภาพ
+  const getImageUrlByName = (name) => {
+    const matchedUrl = imageUrls.find((url) => url.includes(name));
+    console.log(`Image for ${name}: ${matchedUrl}`); // ตรวจสอบว่ามีการจับคู่ภาพอย่างถูกต้อง
+    return matchedUrl || "path/to/placeholder.png"; // ถ้าไม่มีภาพให้ใช้ fallback image
+  };
+
   useEffect(() => {
     const fetchImages = async () => {
       try {
-        const storedImages = await getImages();
-        setImageData(storedImages || []);
+        const response = await axios.get("http://localhost:3500/api/images/list"); // เรียก API เพื่อดึง URL ของภาพ
+        console.log("Image URLs fetched:", response.data.images); // ตรวจสอบ URL ของภาพที่ดึงมา
+        setImageUrls(response.data.images); // ตั้งค่า URL ของภาพใน state
       } catch (error) {
-        console.error("Error fetching images:", error);
-        setError("Failed to load data.");
+        console.error("Failed to load images:", error);
+        setError("Failed to load images.");
       }
     };
-
+  
     fetchImages();
   }, []);
+  
 
-  // ตรวจสอบจำนวนไฟล์และขนาดไฟล์รวมก่อนส่งคำขอไปยัง API
-  const validateImages = () => {
-    if (!Array.isArray(images) || images.length < 1 || images.length > 5) {
-      setError("Please upload between 1 and 5 images.");
-      return false;
+  useEffect(() => {
+    console.log("Outfits data received from state: ", outfitsData); // แสดงข้อมูลที่ถูกส่งมาจาก state
+    if (outfitsData && Array.isArray(outfitsData) && outfitsData.length > 0) {
+      setOutfits(outfitsData);  // ตั้งค่า outfits จากข้อมูลที่ส่งมา
+      setError(""); // ล้าง error ถ้าข้อมูลถูกส่งมาแล้ว
+    } else {
+      console.error("Outfits data not received correctly or is empty");
+      setError("Failed to load outfits.");
     }
-
-    const totalSize = images.reduce((acc, image) => acc + image.size, 0);
-    if (totalSize > 10 * 1024 * 1024) {
-      setError("Total size of images should not exceed 10MB.");
-      return false;
-    }
-
-    return true;
-  };
-
-  // Handle getting recommendations from API
-  const handleGetRecommendations = async () => {
-    if (!validateImages()) return;
-
-    setLoading(true);
-    setError("");
-    
-    const apiUrl = process.env.REACT_APP_BASE_URL || "http://localhost:3500"; // ตรวจสอบ URL ของ API
-    const formData = new FormData();
-    formData.append('style', style);
-    images.forEach((image, index) => formData.append(`image${index}`, image.file));
-
-    try {
-      const response = await axios.post(`${apiUrl}/api/clothes`, formData); // ตรวจสอบ URL ที่ใช้เรียก API
-      setResponse(response.data); // Store the response for further use
-      setError("");
-    } catch (error) {
-      if (error.response && error.response.status === 404) {
-        setError("Resource not found.");
-      } else {
-        setError("Request failed. Please try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [outfitsData]);
+  
+  // เพิ่ม useEffect เพื่อตรวจสอบการตั้งค่า imageUrls และ outfits
+  useEffect(() => {
+    console.log("Image URLs:", imageUrls); 
+    console.log("Outfits:", outfits);
+  }, [imageUrls, outfits]);
 
   // Toggle favorite status
   const toggleHeart = async (favOutfit) => {
@@ -88,13 +68,11 @@ const Recommendations = ({ style, images, response, setResponse }) => {
 
     if (!currentStatus) {
       try {
-        const imageFiles = favOutfit.clothes.map((imageID) => getImageFile(imageID));
-        await storeFavImages(imageFiles);
         await saveFavoriteOutfit(favOutfit);
         setError("");
       } catch (error) {
         console.error("Failed to save your favorite outfit:", error);
-        setError("Failed to save your favorite outfit");
+        setError("Failed to save your favorite outfit.");
       }
     } else {
       try {
@@ -102,41 +80,30 @@ const Recommendations = ({ style, images, response, setResponse }) => {
         setError("");
       } catch (error) {
         console.error("Failed to remove your favorite outfit:", error);
-        setError("Failed to remove your favorite outfit, please try again");
+        setError("Failed to remove your favorite outfit, please try again.");
       }
     }
   };
 
-  // Get image file from IndexedDB
-  const getImageFile = (imageId) => {
-    const image = imageData.find((img) => img.id === imageId);
-    return image ? image : null;
-  };
-
-  // Get image source from IndexedDB
-  const getImageSrc = (imageId) => {
-    const image = imageData.find((img) => img.id === imageId);
-    return image ? URL.createObjectURL(image.blob) : "";
-  };
-
-  if (loading) {
-    return <div className="outfit__loading">Loading...</div>;
+  if (!outfits.length || !imageUrls.length) {
+    console.log("Outfits or images not loaded yet"); // เพิ่มการตรวจสอบการโหลด outfits และ images
+    return <div className="outfit__loading">Loading outfits...</div>; 
   }
 
   return (
     <div className="recommendations">
-      <h1 className="outfit-heading">Here are some outfit ideas to look {style.toLowerCase()}:</h1>
+      <h1 className="outfit-heading">
+        Here are some outfit ideas to look {style.toLowerCase()}:
+      </h1>
       {error && <div className="error">{error}</div>}
-      
-      <button className="primary__btn" onClick={handleGetRecommendations}>
-        Get Recommendations
-      </button>
 
       <div className="outfit-gallery">
-        {Array.isArray(outfits) && outfits.map((outfit) => (
+        {outfits.map((outfit) => (
           <div key={outfit.outfit_id} className="outfit-card">
             <div className="outfit-card__header">
-              <h2 className="outfit-card__text outfit-card__heading">Outfit {outfit.outfit_id}</h2>
+              <h2 className="outfit-card__text outfit-card__heading">
+                Outfit {outfit.outfit_id}
+              </h2>
               <div onClick={() => toggleHeart(outfit)}>
                 <FontAwesomeIcon
                   className="icon"
@@ -146,12 +113,12 @@ const Recommendations = ({ style, images, response, setResponse }) => {
               </div>
             </div>
             <div className="outfit-card__images">
-              {outfit.clothes.map((id) => (
+              {outfit.clothes.map((imageName, idx) => (
                 <img
                   className="outfit-card__image"
-                  key={id}
-                  src={getImageSrc(id)}
-                  alt={`Outfit ${id}`}
+                  key={idx}
+                  src={getImageUrlByName(imageName)} // ใช้ฟังก์ชันจับคู่ URL ของภาพ
+                  alt={`Outfit ${outfit.outfit_id}`}
                   onError={(e) => { e.target.src = "path/to/placeholder.png"; }} // Fallback image
                 />
               ))}
@@ -161,9 +128,11 @@ const Recommendations = ({ style, images, response, setResponse }) => {
           </div>
         ))}
       </div>
-      <button className="primary__btn" onClick={() => navigate(-1)}>Try New Looks</button>
+      <button className="primary__btn" onClick={() => navigate(-1)}>
+        Try New Looks
+      </button>
     </div>
   );
-};
+}
 
 export default Recommendations;

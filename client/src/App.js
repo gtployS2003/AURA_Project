@@ -8,7 +8,6 @@ import Footer from "./components/Footer/Footer";
 import Home from "./pages/Home/Home";
 
 function App() {
-  // The message string obtained from GPT-4 API, shared between the recommendation page and the homepage
   const [response, setResponse] = useState("");
   const [style, setStyle] = useState("");
 
@@ -32,7 +31,6 @@ function App() {
             <Route
               path="/recommendations"
               element={
-                // Check if response and style are available before rendering Recommendations
                 response && style ? (
                   <Recommendations response={response} style={style} />
                 ) : (

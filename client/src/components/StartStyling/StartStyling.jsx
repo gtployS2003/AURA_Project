@@ -52,10 +52,14 @@ const StartStyling = ({ style, setStyle, response, setResponse, images, gender }
   // Navigate when API call is finished
   useEffect(() => {
     if (apiCallFinished && Array.isArray(response) && response.length > 0) {
-      navigate("/recommendations");
-      setApiCallFinished(false); // Reset the flag after navigating
+      console.log("Response received:", response); // ตรวจสอบข้อมูล response
+
+      // ส่ง response ที่ได้รับไปยังหน้า Recommendations
+      navigate("/recommendations", { state: { outfits: response } });
+
+      setApiCallFinished(false);
     }
-  }, [apiCallFinished]);
+  }, [apiCallFinished, response, navigate]);
 
   // Handle style selection
   const handleStyleClick = (style) => {
@@ -98,9 +102,11 @@ const StartStyling = ({ style, setStyle, response, setResponse, images, gender }
         headers: {
           "Content-Type": "multipart/form-data",
         },
+        
       });
 
-      console.log("Response:", apiResponse.data);
+      console.log("API response:", apiResponse.data); // ตรวจสอบ response จาก API
+
       setResponse(apiResponse.data.message.content);  // ใช้การตอบสนองที่ได้จาก API
     } catch (error) {
       console.error("Error in sending request:", error);
@@ -122,8 +128,8 @@ const StartStyling = ({ style, setStyle, response, setResponse, images, gender }
       return;
     }
 
-    setRequest(true);
-    setErrors({}); // Clear previous errors
+    setRequest(true);  // แสดงการโหลด
+    setErrors({});  // Clear previous errors
 
     const formData = new FormData();
     const formDataKeys = [];
@@ -132,22 +138,27 @@ const StartStyling = ({ style, setStyle, response, setResponse, images, gender }
       formDataKeys.push(`image${index}`);
     });
     formData.append("style", style);
-    formData.append("gender", gender);  // เพิ่มเพศลงใน formData
 
     try {
-      await storeImages(images, formDataKeys); // Store images in IndexedDB
+      // บันทึกภาพใน IndexedDB
+      await storeImages(images, formDataKeys);
 
+      // เรียก API เพื่อส่งข้อมูลไปยัง server
       const apiResponse = await axios.post(`${base_url}/api/clothes`, formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
       });
-      setResponse(apiResponse.data.message.content);
-      setRequest(false);
-      setApiCallFinished(true);
+
+      console.log("API response:", apiResponse.data); // ตรวจสอบการตอบกลับจาก API
+      // ใช้ข้อมูลจาก response ในการตั้งค่า response (ที่ได้จาก API) และตั้ง state
+      setResponse(apiResponse.data.outfits);  // setResponse เป็นข้อมูล outfits ที่ได้จาก GPT
+      setRequest(false);  // ปิดการโหลด
+      setApiCallFinished(true);  // ตั้งค่าว่าการเรียก API เสร็จสิ้นแล้ว
     } catch (error) {
       console.error("Error in sending request:", error);
       setErrors({ api: `${error.message}. Please try again.` });
+      setRequest(false);  // ปิดการโหลดเมื่อมีข้อผิดพลาด
     }
   };
 

@@ -1,80 +1,90 @@
 const { processImages } = require("./utils/processImages.js");
 const OpenAIApi = require("openai");
-const Outfit = require("../model/Outfit.js"); // Model ของ MongoDB สำหรับบันทึก outfit
+const Outfit = require("../model/Outfit.js");
+const path = require("path");
+const fs = require("fs");
 require("dotenv").config({ path: `${__dirname}/../.env` });
-// Initialize the OpenAI API client
 
 const openai = new OpenAIApi({ apiKey: process.env.OPENAI_API_KEY });
 
 const analyzer = async (req, res) => {
-  const selectedstyle = req.body.style;
-  const imageUrls = await processImages(req); // imageUrls จะเป็น Base64
-
-  const formatExample = JSON.stringify([
-    {
-      outfit_id: 0,
-      clothes: ["image1", "image2", "image3"],
-      score: 10,
-      considerations: "",
-    },
-  ]);
-
-  // แก้ไขข้อความที่ส่งให้ GPT
-  const textContent = `นี่คือชุดของภาพที่ถูกเข้ารหัสในรูปแบบ base64 ซึ่งก็คือ ${imageUrls} โดยแต่ละภาพแสดงเสื้อผ้าชิ้นต่าง ๆ ฉันต้องการสร้างชุดหลายชุดสำหรับผู้หญิงอายุ 25-30 ปี ในสไตล์ ${selectedstyle} โดยพิจารณาจากภาพเหล่านี้ เริ่มต้นด้วยการวิเคราะห์ภาพตามสี รูปแบบ เนื้อผ้า จากนั้นให้ทำการผสมและจับคู่เสื้อผ้าเหล่านี้เพื่อสร้างชุด 1-5 ชุด แต่ละชุดควรประกอบด้วยเสื้อผ้า 2-4 ชิ้น
-
-สำหรับแต่ละชุด กรุณาให้รายการที่ประกอบไปด้วย:
-
-ตัวระบุชุด (outfit_id) (สร้างโดยอัตโนมัติ)
-รายการ clothes_id ที่คุณเลือกสำหรับชุดนี้ โดย clothes_id คือดัชนีของภาพในรูปแบบ image+index (เริ่มจาก 0)
-คะแนนจาก 0 ถึง 10 ที่แสดงถึงความเหมาะสมของชุดกับสไตล์ ${selectedstyle}
-คำอธิบายสั้น ๆ เกี่ยวกับเหตุผลในการเลือกชุดนี้
-ผลลัพธ์ควรอยู่ในรูปแบบ JSON เช่นนี้ ${formatExample}.`;
-
-  const message = [
-    {
-      role: "user",
-      content: textContent, // ส่งเฉพาะข้อความที่มีภาพใน Base64
-    },
-  ];
-
-  console.log(JSON.stringify(message));
-
   try {
+    const selectedstyle = req.body.style;
+
+    const imageDirectory = path.join(__dirname, '../uploads'); 
+    const imageFiles = fs.readdirSync(imageDirectory);
+    
+    const baseUrl = 'http://localhost:3500/uploads';
+    const imageUrls = imageFiles.map(file => `${baseUrl}/${file}`);
+
+    const formatExample = JSON.stringify([
+      {
+        outfit_id: 0,
+        clothes: [imageUrls[0], imageUrls[1], imageUrls[2]], 
+        score: 10,
+        considerations: "",
+        recommended: ""
+      },
+    ]);
+
+    const textContent = `นี่คือภาพเสื้อผ้าถูกเข้ารหัสในรูปแบบ base64 (${imageUrls}) ซึ่งแสดงเสื้อผ้าชิ้นต่าง ๆ ฉันต้องการให้คุณสร้างชุดสำหรับผู้หญิงอายุ 25-30 ปี ในสไตล์ ${selectedstyle} โดยเริ่มจากการวิเคราะห์ภาพตามสี รูปแบบ และเนื้อผ้า จากนั้นผสมและจับคู่เสื้อผ้าเหล่านี้เพื่อสร้างชุด 1-5 ชุด แต่ละชุดประกอบด้วยส่วนล่าง (กางเกง, กระโปรง) และส่วนบน (เสื้อ) หรือถ้าเป็นเดรสจะถือว่าเป็นทั้งส่วนล่างและบน ห้ามรวมรองเท้าและเครื่องประดับ ให้คะแนนความเหมาะสมของแต่ละชุดจาก 0 ถึง 10 พร้อมอธิบายเหตุผลสั้น ๆ ในการเลือกชุดนั้น นอกจากนี้ กรุณาให้คำแนะนำในการแต่งตัว การแต่งหน้า และการเลือกเครื่องประดับเพิ่มเติมที่เหมาะสมกับชุดแต่ละชุด ผลลัพธ์ที่ต้องการควรอยู่ในรูปแบบ JSON เช่น ${formatExample}.`;
+
+    const message = [
+      {
+        role: "user",
+        content: textContent,
+      },
+    ];
+
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", 
+      model: "gpt-4o-mini",
       messages: message,
     });
 
-    console.log(response.choices[0]);
-    res.status(200).json(response.choices[0]);
+    console.log("GPT response received:", JSON.stringify(response, null, 2));
 
     const generatedOutfits = response.choices[0].message.content;
 
+    // ใช้ regex เพื่อค้นหา JSON
+    const jsonMatch = generatedOutfits.match(/\[\s*{[\s\S]*?}\s*\]/);
+    if (!jsonMatch) {
+      console.error("JSON block not found in GPT response");
+      return res.status(500).json({ message: "JSON block not found in GPT response" });
+    }
+
+    const jsonContent = jsonMatch[0].trim();
+
+    let parsedOutfits;
+    try {
+      parsedOutfits = JSON.parse(jsonContent);
+    } catch (err) {
+      console.error("Error parsing GPT response:", err.message);
+      return res.status(500).json({ message: "Invalid GPT response format" });
+    }
+
     // Save the generated outfits to MongoDB
     const newOutfit = new Outfit({
+      outfit_id: parsedOutfits[0]?.outfit_id || 0,
       style: selectedstyle,
-      outfits: JSON.parse(generatedOutfits),
+      outfits: parsedOutfits,
       createdAt: new Date(),
     });
 
-    await newOutfit.save(); // บันทึกข้อมูลลง MongoDB
+    await newOutfit.save();
 
-    res.status(200).json(newOutfit);
+    // ส่งข้อมูลชุดเสื้อผ้ากลับไปยัง client
+    return res.status(200).json({ 
+      message: 'Outfit generated and saved successfully', 
+      outfits: parsedOutfits, 
+      images: imageUrls 
+    })
 
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: `Error calling GPT-4 API: ${error}` });
-  }
+    console.error("Error in analyzer:", error);
+    if (!res.headersSent) {
+      return res.status(500).json({ message: `Error calling GPT-4 API: ${error.message}` });
+    }
+  } 
 };
 
-const getSavedOutfits = async (req, res) => {
-  try {
-    const outfits = await Outfit.find(); // ดึงข้อมูลทั้งหมดจาก MongoDB
-    res.status(200).json(outfits);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Error retrieving outfits" });
-  }
-};
-
-module.exports = { analyzer, getSavedOutfits };
+module.exports = { analyzer };

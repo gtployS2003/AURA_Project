@@ -7,4 +7,5 @@ const formDataValidator = (req, res, next) => {
   }
   next();
 };
+
 module.exports = { formDataValidator };
