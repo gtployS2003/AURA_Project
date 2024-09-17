@@ -16,8 +16,18 @@ export function getJson(message) {
     }
   }
 
+  // ถ้าไม่พบ JSON block ที่สมบูรณ์ อาจลองสกัด JSON จากข้อความทั้งหมด
   if (jsonData.length === 0) {
-    console.warn("No valid JSON data found in the message.");
+    try {
+      const parsedData = JSON.parse(message);
+      if (Array.isArray(parsedData)) {
+        jsonData.push(...parsedData);
+      } else {
+        jsonData.push(parsedData);
+      }
+    } catch (error) {
+      console.warn("No valid JSON data found in the message or failed to parse.", error);
+    }
   }
 
   return jsonData;

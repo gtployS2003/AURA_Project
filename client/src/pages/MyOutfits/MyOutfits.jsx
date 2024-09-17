@@ -82,16 +82,12 @@ function MyOutfits() {
             </div>
             <div className="outfit-card__images">
               {outfit.clothes.map((id) => (
-                <div className="outfit-card__images">
-                  {outfit.clothes.map((id) => (
-                    <img
-                      className="outfit-card__image"
-                      key={id}
-                      src={getImageSrc(id)}
-                      alt={`Outfit ${id}`}
-                    />
-                  ))}
-                </div>
+                <img
+                  className="outfit-card__image"
+                  key={id}
+                  src={getImageSrc(id)}
+                  alt={`Outfit ${id}`}
+                />
               ))}
             </div>
             <p className="outfit-card__text">Score: {outfit.score}</p>

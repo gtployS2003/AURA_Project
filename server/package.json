@@ -16,6 +16,8 @@
     "express": "^4.21.0",
     "express-fileupload": "^1.5.0",
     "gpt-3-encoder": "^1.1.4",
+    "mongodb": "^6.9.0",
+    "mongoose": "^8.6.2",
     "openai": "^4.61.0",
     "sharp": "^0.33.3"
   }

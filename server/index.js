@@ -5,11 +5,26 @@ const cors = require("cors");
 const path = require("path");
 const clothesRoutes = require("./routes/clothes");
 const outfitsRoutes = require("./routes/outfits");
+const mongoose = require('mongoose');
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3001; 
+const PORT = process.env.PORT || 3500;
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI,)
+  .then(() => {
+    console.log("MongoDB connected");
+
+    // Start server after successful connection
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error("MongoDB connection error:", err);
+  });
 
 // Middleware
 app.use(cors());

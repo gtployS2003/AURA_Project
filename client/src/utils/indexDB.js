@@ -122,6 +122,7 @@ async function saveFavoriteOutfit(outfit) {
   const outfitToSave = {
     ...outfit,
     id: outfit.outfit_id,
+    savedAt: new Date().toISOString(), // เพิ่มเวลาที่บันทึก
   };
   delete outfitToSave.outfit_id;
 

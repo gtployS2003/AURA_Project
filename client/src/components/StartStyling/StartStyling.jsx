@@ -13,7 +13,7 @@ const StartStyling = ({ style, setStyle, response, setResponse, images, gender }
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const base_url = process.env.REACT_APP_BASE_URL || "http://localhost:3001"; // Default base URL
+  const base_url = process.env.REACT_APP_BASE_URL || "http://localhost:3500"; // Default base URL
   const navigate = useNavigate();
 
   const styles = [

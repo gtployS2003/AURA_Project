@@ -1,7 +1,9 @@
-const OpenAIApi = require("openai"); // Import the OpenAI library
 const { processImages } = require("./utils/processImages.js");
+const OpenAIApi = require("openai");
+const Outfit = require("../model/Outfit.js"); // Model ของ MongoDB สำหรับบันทึก outfit
 require("dotenv").config({ path: `${__dirname}/../.env` });
 // Initialize the OpenAI API client
+
 const openai = new OpenAIApi({ apiKey: process.env.OPENAI_API_KEY });
 
 const analyzer = async (req, res) => {
@@ -39,15 +41,40 @@ const analyzer = async (req, res) => {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini", // ยืนยันว่าใช้ GPT-4 หรือ GPT-4 Vision ถ้ารองรับภาพ
+      model: "gpt-4o-mini", 
       messages: message,
     });
+
     console.log(response.choices[0]);
     res.status(200).json(response.choices[0]);
+
+    const generatedOutfits = response.choices[0].message.content;
+
+    // Save the generated outfits to MongoDB
+    const newOutfit = new Outfit({
+      style: selectedstyle,
+      outfits: JSON.parse(generatedOutfits),
+      createdAt: new Date(),
+    });
+
+    await newOutfit.save(); // บันทึกข้อมูลลง MongoDB
+
+    res.status(200).json(newOutfit);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: `Error calling GPT-4 API: ${error}` });
   }
 };
 
-module.exports = { analyzer };
+const getSavedOutfits = async (req, res) => {
+  try {
+    const outfits = await Outfit.find(); // ดึงข้อมูลทั้งหมดจาก MongoDB
+    res.status(200).json(outfits);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error retrieving outfits" });
+  }
+};
+
+module.exports = { analyzer, getSavedOutfits };

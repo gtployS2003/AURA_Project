@@ -60,13 +60,13 @@ const Recommendations = ({ style, images, response, setResponse }) => {
     setLoading(true);
     setError("");
     
-    const apiUrl = process.env.REACT_APP_BASE_URL;
+    const apiUrl = process.env.REACT_APP_BASE_URL || "http://localhost:3500"; // ตรวจสอบ URL ของ API
     const formData = new FormData();
     formData.append('style', style);
     images.forEach((image, index) => formData.append(`image${index}`, image.file));
 
     try {
-      const response = await axios.post(`http://localhost:3001/api/clothes`, formData);
+      const response = await axios.post(`${apiUrl}/api/clothes`, formData); // ตรวจสอบ URL ที่ใช้เรียก API
       setResponse(response.data); // Store the response for further use
       setError("");
     } catch (error) {
