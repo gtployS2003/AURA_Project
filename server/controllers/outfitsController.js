@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Outfit = require('../model/Outfit.js');
 const Favorite = require('../model/Favorite.js');
 
@@ -11,44 +12,50 @@ const getRecommendations = async (req, res) => {
   }
 };
 
-// บันทึก Outfit เป็น Favorites
 const saveFavorite = async (req, res) => {
   try {
     const { outfitId } = req.body;
     
-    console.log("Request to save favorite received for outfitId:", outfitId); // ตรวจสอบว่า server ได้รับ request แล้ว
+    console.log("Request to save favorite received for outfitId:", outfitId);
 
-    // ตรวจสอบว่า outfitId มีอยู่หรือไม่
-    const outfit = await Outfit.findById(outfitId);
+    // ตรวจสอบว่า outfitId มีความยาว 24 ตัวอักษรและเป็น string (รูปแบบ ObjectId)
+    if (!mongoose.Types.ObjectId.isValid(outfitId)) {
+      console.error("Invalid outfit ID format:", outfitId);
+      return res.status(400).json({ message: "Invalid outfit ID format" });
+    }
+
+    // แปลง outfitId เป็น ObjectId
+    const objectId = new mongoose.Types.ObjectId(outfitId);
+
+    // ตรวจสอบว่า outfitId มีอยู่ในฐานข้อมูลหรือไม่
+    const outfit = await Outfit.findById(objectId);
     if (!outfit) {
+      console.error("Outfit not found with ID:", objectId);
       return res.status(404).json({ message: 'Outfit not found' });
     }
 
-    // ตรวจสอบว่า outfit ถูกบันทึกเป็น favorite แล้วหรือยัง
-    if (outfit.favorite) {
+    // ตรวจสอบว่าชุดนี้ถูกบันทึกเป็น favorite แล้วหรือไม่
+    const existingFavorite = await Favorite.findOne({ outfit: objectId });
+    if (existingFavorite) {
       return res.status(400).json({ message: 'Outfit is already a favorite' });
     }
 
-    // บันทึก outfit เป็น favorite
-    outfit.favorite = true;
-    await outfit.save();
-
-    // เพิ่มเอกสารใหม่ใน Favorite collection
-    const favorite = new Favorite({ outfit: outfitId });
+    // บันทึกชุดเป็น favorite
+    const favorite = new Favorite({ outfit: objectId });
     await favorite.save();
 
-    console.log("Outfit saved as favorite successfully"); // ตรวจสอบว่าบันทึกสำเร็จ
-    res.status(201).json({ message: 'บันทึก outfit เป็น favorite แล้ว!' });
+    console.log("Outfit saved as favorite successfully");
+    res.status(201).json({ message: 'Outfit saved as favorite!' });
   } catch (error) {
-    console.error("Error saving outfit as favorite:", error); // ตรวจสอบ error
+    console.error("Error saving outfit as favorite:", error);
     res.status(500).json({ message: 'Error saving outfit as favorite' });
   }
 };
 
-// ดึงข้อมูล Favorites ที่บันทึกไว้ทั้งหมด
+// ฟังก์ชันสำหรับดึง Favorites ทั้งหมด
 const getFavorites = async (req, res) => {
   try {
-    const favorites = await Favorite.find().populate('outfit'); // ดึงข้อมูล outfit ที่เชื่อมโยง
+    const favorites = await Favorite.find(); // ดึงข้อมูล favorites outfits ทั้งหมด
     res.json(favorites);
   } catch (error) {
     res.status(500).json({ message: 'Error fetching favorites' });
@@ -71,4 +78,18 @@ const getAllSavedOutfits = async (req, res) => {
   }
 };
 
-module.exports = { getRecommendations, saveFavorite, getFavorites, getAllSavedOutfits };
+const removeOutfit = async (req, res) => {
+  try {
+    const { outfitId } = req.body; // ดึงค่า outfitId จาก body request
+    const removedOutfit = await Favorite.findOneAndDelete({ outfit: outfitId });
+    if (!removedOutfit) {
+      return res.status(404).json({ message: 'Outfit not found' });
+    }
+    res.status(200).json({ message: 'Outfit removed successfully' });
+  } catch (error) {
+    console.error("Error removing outfit:", error);
+    res.status(500).json({ message: 'Error removing outfit' });
+  }
+};
+
+module.exports = { getRecommendations, saveFavorite, getFavorites, getAllSavedOutfits, removeOutfit };

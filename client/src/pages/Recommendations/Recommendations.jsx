@@ -46,6 +46,7 @@ const Recommendations = ({ style }) => {
   useEffect(() => {
     console.log("Outfits data received from state: ", outfitsData); // แสดงข้อมูลที่ถูกส่งมาจาก state
     if (outfitsData && Array.isArray(outfitsData) && outfitsData.length > 0) {
+      outfitsData.forEach(outfit => console.log("Outfit ID:", outfit._id)); // ตรวจสอบว่า _id มีอยู่
       setOutfits(outfitsData);  // ตั้งค่า outfits จากข้อมูลที่ส่งมา
       setError(""); // ล้าง error ถ้าข้อมูลถูกส่งมาแล้ว
     } else {
@@ -62,13 +63,17 @@ const Recommendations = ({ style }) => {
 
   // Toggle favorite status
   const toggleHeart = async (favOutfit) => {
-    const currentStatus = favoriteStatus[favOutfit.outfit_id];
-    const newStatus = { ...favoriteStatus, [favOutfit.outfit_id]: !currentStatus };
+    console.log("Favorite Outfit:", favOutfit);  // ตรวจสอบ favOutfit object
+    const currentStatus = favoriteStatus[favOutfit._id];
+    const newStatus = { ...favoriteStatus, [favOutfit._id]: !currentStatus };
     setFavoriteStatus(newStatus);
-
+  
     if (!currentStatus) {
       try {
-        await saveFavoriteOutfit(favOutfit);
+        // ตรวจสอบว่ามีการส่ง outfitId ที่ถูกต้อง
+        console.log("Outfit ID to save as favorite:", favOutfit._id);  // ตรวจสอบ _id
+        const response = await axios.post("http://localhost:3500/api/outfits/save-favorite", { outfitId: favOutfit._id });
+        console.log("Outfit saved as favorite:", response.data);
         setError("");
       } catch (error) {
         console.error("Failed to save your favorite outfit:", error);
@@ -76,7 +81,9 @@ const Recommendations = ({ style }) => {
       }
     } else {
       try {
-        await removeFavoriteOutfit(favOutfit.outfit_id);
+        console.log("Outfit ID to remove from favorite:", favOutfit._id);  // ตรวจสอบ _id
+        const response = await axios.delete("http://localhost:3500/api/outfits/remove", { data: { outfitId: favOutfit._id } });
+        console.log("Outfit removed from favorites:", response.data);
         setError("");
       } catch (error) {
         console.error("Failed to remove your favorite outfit:", error);
@@ -84,6 +91,8 @@ const Recommendations = ({ style }) => {
       }
     }
   };
+  
+  
 
   if (!outfits.length || !imageUrls.length) {
     console.log("Outfits or images not loaded yet"); // เพิ่มการตรวจสอบการโหลด outfits และ images
